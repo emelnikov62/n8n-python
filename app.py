@@ -259,6 +259,10 @@ def processRest(params):
 #     getExcelCreds()
 #     return {'status': SUCCESS}
 
+@app.get('/api/test')
+def test():
+    return {'status': SUCCESS}
+
 
 if __name__ == '__main__':
     app.run()
