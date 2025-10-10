@@ -136,25 +136,25 @@ def cancelRecordExcel(service, spreadsheet_id, data):
 
 
 # Post rest webhook
-@app.get('/api/integration')
+@app.post('/api/integration')
 def webhookIntegration():
-    data = {
-        'fields': {
-            'surname': 'Иванов',
-            'name': 'Иван',
-            'phone': '89009009090',
-            'doctor': 'окулист',
-            'date_time': '2025-09-29 11:59:39.019769'
-        },
-        'database': 'n8n_db',
-        'user': 'n8n_user',
-        'password': 'Mery1029384756$',
-        'host': 'n8n-db-emelnikov62.db-msk0.amvera.tech',
-        'port': 5432,
-        'client_id': 2,
-        'action': 'add_record_google_excel'
-    }
-    # data = request.get_json()
+    # data = {
+    #     'fields': {
+    #         'surname': 'Иванов',
+    #         'name': 'Иван',
+    #         'phone': '89009009090',
+    #         'doctor': 'окулист',
+    #         'date_time': '2025-09-29 11:59:39.019769'
+    #     },
+    #     'database': 'n8n_db',
+    #     'user': 'n8n_user',
+    #     'password': 'Mery1029384756$',
+    #     'host': 'n8n-db-emelnikov62.db-msk0.amvera.tech',
+    #     'port': 5432,
+    #     'client_id': 2,
+    #     'action': 'add_record_google_excel'
+    # }
+    data = request.get_json()
     action = data.get('action')
     client_id = data.get('client_id')
     paramsDb = {
