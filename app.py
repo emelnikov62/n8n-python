@@ -63,16 +63,24 @@ def getExcelCreds():
         creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                refreshToken()
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
+            return refreshToken()
 
     return creds
 
+def refreshToken():
+    flow = InstalledAppFlow.from_client_secrets_file(CREDS_FILE, SCOPES)
+    creds = flow.run_local_server(port=0)
+    # Save the credentials for the next run
+
+    with open("token.json", "w") as token:
+        token.write(creds.to_json())
+
+    return creds
 
 # Add record in excel
 def addRecordExcel(service, spreadsheet_id, value_input_option, range_name, data):
@@ -128,25 +136,25 @@ def cancelRecordExcel(service, spreadsheet_id, data):
 
 
 # Post rest webhook
-@app.post('/api/integration')
+@app.get('/api/integration')
 def webhookIntegration():
-    # data = {
-    #     'fields': {
-    #         'surname': 'Иванов',
-    #         'name': 'Иван',
-    #         'phone': '89009009090',
-    #         'doctor': 'окулист',
-    #         'date_time': '2025-09-29 11:59:39.019769'
-    #     },
-    #     'database': 'n8n_db',
-    #     'user': 'n8n_user',
-    #     'password': 'Mery1029384756$',
-    #     'host': 'n8n-db-emelnikov62.db-msk0.amvera.tech',
-    #     'port': 5432,
-    #     'client_id': 2,
-    #     'action': 'cancel_record_google_excel'
-    # }
-    data = request.get_json()
+    data = {
+        'fields': {
+            'surname': 'Иванов',
+            'name': 'Иван',
+            'phone': '89009009090',
+            'doctor': 'окулист',
+            'date_time': '2025-09-29 11:59:39.019769'
+        },
+        'database': 'n8n_db',
+        'user': 'n8n_user',
+        'password': 'Mery1029384756$',
+        'host': 'n8n-db-emelnikov62.db-msk0.amvera.tech',
+        'port': 5432,
+        'client_id': 2,
+        'action': 'add_record_google_excel'
+    }
+    # data = request.get_json()
     action = data.get('action')
     client_id = data.get('client_id')
     paramsDb = {
@@ -259,9 +267,9 @@ def processRest(params):
 #     getExcelCreds()
 #     return {'status': SUCCESS}
 
-@app.get('/api/test')
-def test():
-    return {'status': SUCCESS}
+@app.get('/api/refresh-token')
+def refreshTokenExcel():
+    refreshToken()
 
 
 if __name__ == '__main__':
