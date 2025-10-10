@@ -90,11 +90,11 @@ def addRecordExcel(service, spreadsheet_id, value_input_option, range_name, data
         service
         .spreadsheets()
         .values()
-        .update(spreadsheetId=spreadsheet_id, range=range_name, valueInputOption=value_input_option, body=body)
+        .append(spreadsheetId=spreadsheet_id, range=range_name, valueInputOption=value_input_option, body=body)
         .execute()
     )
 
-    if rows.get('updatedCells') is None:
+    if rows.get('updates') is None or (rows.get('updates') is not None and rows.get('updates').get('updatedRows') is None):
         return {'status': "fail", 'message': 'error add excel record', 'type': API_EXCEL}
 
     return {'status': "success", 'type': API_EXCEL}
@@ -136,25 +136,25 @@ def cancelRecordExcel(service, spreadsheet_id, data):
 
 
 # Post rest webhook
-@app.post('/api/integration')
+@app.get('/api/integration')
 def webhookIntegration():
-    # data = {
-    #     'fields': {
-    #         'surname': 'Иванов',
-    #         'name': 'Иван',
-    #         'phone': '89009009090',
-    #         'doctor': 'окулист',
-    #         'date_time': '2025-09-29 11:59:39.019769'
-    #     },
-    #     'database': 'n8n_db',
-    #     'user': 'n8n_user',
-    #     'password': 'Mery1029384756$',
-    #     'host': 'n8n-db-emelnikov62.db-msk0.amvera.tech',
-    #     'port': 5432,
-    #     'client_id': 2,
-    #     'action': 'add_record_google_excel'
-    # }
-    data = request.get_json()
+    data = {
+        'fields': {
+            'surname': 'Иванов',
+            'name': 'Иван',
+            'phone': '89009009090',
+            'doctor': 'окулист',
+            'date_time': '2025-09-29 11:59:39.019769'
+        },
+        'database': 'n8n_db',
+        'user': 'n8n_user',
+        'password': 'Mery1029384756$',
+        'host': 'n8n-db-emelnikov62.db-msk0.amvera.tech',
+        'port': 5432,
+        'client_id': 2,
+        'action': 'add_record_google_excel'
+    }
+    # data = request.get_json()
     action = data.get('action')
     client_id = data.get('client_id')
     paramsDb = {
