@@ -25,9 +25,9 @@ app = Flask(__name__)
 
 
 # Add record to pg
-def addRecordPg(cursor, data, params):
+def addRecordPg(cursor, data, params, action):
     columns = str(Stream.of(params[15]).map(lambda x: x['key']).to_tuple())
-    values = Stream.of(data.get('fields')).map(lambda x: data.get('fields').get(x)).to_tuple()
+    values = Stream.of(data.get('fields').get(action)).map(lambda x: data.get('fields').get(action).get(x)).to_tuple()
 
     sql = 'insert into {0}.{1} {2} values {3} returning id'.format(params[8], params[9], columns.replace("'", ""),
                                                                    values)
@@ -40,9 +40,10 @@ def addRecordPg(cursor, data, params):
 
 
 # Cancel record from pg
-def cancelRecordPg(cursor, data, params):
-    values = Stream.of(data.get('fields')).map(
-        lambda x: "{0}::text = '{1}'::text".format(x.replace("'", ""), data.get('fields').get(x))).to_tuple()
+def cancelRecordPg(cursor, data, params, action):
+    values = Stream.of(data.get('fields').get(action)).map(
+        lambda x: "{0}::text = '{1}'::text".format(x.replace("'", ""),
+                                                   data.get('fields').get(action).get(x))).to_tuple()
     print(' and '.join(values))
 
     sql = 'delete from {0}.{1} where {2}'.format(params[8], params[9], ' and '.join(values))
@@ -72,6 +73,7 @@ def getExcelCreds():
 
     return creds
 
+
 def refreshToken():
     flow = InstalledAppFlow.from_client_secrets_file(CREDS_FILE, SCOPES)
     creds = flow.run_local_server(port=0)
@@ -82,9 +84,10 @@ def refreshToken():
 
     return creds
 
+
 # Add record in excel
-def addRecordExcel(service, spreadsheet_id, value_input_option, range_name, data):
-    values = [Stream.of(data.get('fields')).map(lambda x: data.get('fields').get(x)).to_list()]
+def addRecordExcel(service, spreadsheet_id, value_input_option, range_name, data, action):
+    values = [Stream.of(data.get('fields').get(action)).map(lambda x: data.get('fields').get(action).get(x)).to_list()]
     body = {"values": values}
     rows = (
         service
@@ -94,21 +97,22 @@ def addRecordExcel(service, spreadsheet_id, value_input_option, range_name, data
         .execute()
     )
 
-    if rows.get('updates') is None or (rows.get('updates') is not None and rows.get('updates').get('updatedRows') is None):
+    if rows.get('updates') is None or (
+            rows.get('updates') is not None and rows.get('updates').get('updatedRows') is None):
         return {'status': "fail", 'message': 'error add excel record', 'type': API_EXCEL}
 
     return {'status': "success", 'type': API_EXCEL}
 
 
 # Cancel record in excel
-def cancelRecordExcel(service, spreadsheet_id, data):
+def cancelRecordExcel(service, spreadsheet_id, data, action):
     rows = (service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range='Data!A:Z').execute())
     valuesExcel = rows.get("values", [])
     if valuesExcel is None:
         return {'status': "fail", 'message': 'error cancel excel record', 'type': API_EXCEL}
 
     found = 0
-    values = Stream.of(data.get('fields')).map(lambda x: data.get('fields').get(x)).to_list()
+    values = Stream.of(data.get('fields').get(action)).map(lambda x: data.get('fields').get(action).get(x)).to_list()
 
     max = len(values)
     for index, val in enumerate(valuesExcel, start=1):
@@ -140,11 +144,14 @@ def cancelRecordExcel(service, spreadsheet_id, data):
 def webhookIntegration():
     # data = {
     #     'fields': {
-    #         'surname': 'Иванов',
-    #         'name': 'Иван',
-    #         'phone': '89009009090',
-    #         'doctor': 'окулист',
-    #         'date_time': '2025-09-29 11:59:39.019769'
+    #         'add_record': {
+    #             'surname': 'Иванов',
+    #             'name': 'Иван',
+    #             'phone': '89009009090',
+    #             'doctor': 'окулист',
+    #             'date_time': '2025-09-29 11:59:39.019769'
+    #         },
+    #         'cancel_record': {}
     #     },
     #     'database': 'n8n_db',
     #     'user': 'n8n_user',
@@ -152,7 +159,7 @@ def webhookIntegration():
     #     'host': 'n8n-db-emelnikov62.db-msk0.amvera.tech',
     #     'port': 5432,
     #     'client_id': 2,
-    #     'action': 'add_record_google_excel'
+    #     'action': 'add_record'
     # }
     data = request.get_json()
     action = data.get('action')
@@ -189,10 +196,10 @@ def webhookIntegration():
     result = []
     for param in rows:
         if param[0] == API_EXCEL:
-            result.append(processGoogleSheet(param, data))
+            result.append(processGoogleSheet(param, data, action))
 
         if param[0] == API_PG:
-            result.append(processPg(param, data))
+            result.append(processPg(param, data, action))
 
         if param[0] == API_REST:
             result.append(processRest(param))
@@ -211,7 +218,7 @@ def webhookIntegration():
 
 
 # Process google sheet
-def processGoogleSheet(params, data):
+def processGoogleSheet(params, data, action):
     creds = getExcelCreds()
 
     if creds is None:
@@ -225,16 +232,16 @@ def processGoogleSheet(params, data):
 
     result = None
     if params[2] == INSERT:
-        result = addRecordExcel(service, spreadsheet_id, value_input_option, range_name, data)
+        result = addRecordExcel(service, spreadsheet_id, value_input_option, range_name, data, action)
 
     if params[2] == DELETE:
-        result = cancelRecordExcel(service, spreadsheet_id, data)
+        result = cancelRecordExcel(service, spreadsheet_id, data, action)
 
     return result
 
 
 # Process postgres
-def processPg(params, data):
+def processPg(params, data, action):
     paramsDb = {
         'database': params[3],
         'user': params[4],
@@ -248,10 +255,10 @@ def processPg(params, data):
 
     result = None
     if params[2] == INSERT:
-        result = addRecordPg(cursor, data, params)
+        result = addRecordPg(cursor, data, params, action)
 
     if params[2] == DELETE:
-        result = cancelRecordPg(cursor, data, params)
+        result = cancelRecordPg(cursor, data, params, action)
 
     connection.commit()
     return result
