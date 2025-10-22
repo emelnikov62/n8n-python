@@ -1,4 +1,5 @@
 import psycopg2
+import requests
 from flask import Flask
 from flask import request
 import os.path
@@ -8,7 +9,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from pystreamapi import Stream
 
-SCOPES = ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file",
+SCOPES = ["https://www.googleapis.com/auth/drive",
+          "https://www.googleapis.com/auth/drive.file",
           "https://www.googleapis.com/auth/spreadsheets"]
 TOKEN_FILE = "token.json"
 CREDS_FILE = "creds.json"
@@ -21,6 +23,10 @@ DELETE = 'delete'
 API_PG = 'postgres'
 API_EXCEL = 'google sheets'
 API_REST = 'rest'
+
+API_YANDEX_SPEECH_KIT_TOKEN = 'AQVNxPqsNFPShdMRlrYdwJUtKTufys1WCVxeI99W'
+API_YANDEX_SPEECH_KIT_URL = 'https://tts.api.cloud.yandex.net:443/tts/v3/utteranceSynthesis'
+
 app = Flask(__name__)
 
 
@@ -277,6 +283,23 @@ def processRest(params):
 @app.get('/api/refresh-token')
 def refreshTokenExcel():
     refreshToken()
+
+
+@app.post('/api/speech')
+def speech():
+    params = request.get_json()
+
+    try:
+        response = requests.post(API_YANDEX_SPEECH_KIT_URL,
+                                 headers={'Authorization': 'Bearer ' + API_YANDEX_SPEECH_KIT_TOKEN},
+                                 json={"text": params.get('text'),
+                                       "hints": [{"voice": "marina"}, {"role": "friendly"}]})
+        response.raise_for_status()
+        json_data = response.json()
+    except requests.exceptions.RequestException as e:
+        return {'status': FAIL, 'message': str(e)}
+
+    return {'status': SUCCESS, 'audio_data': json_data.get('result').get('audioChunk').get('data')}
 
 
 if __name__ == '__main__':
