@@ -1,3 +1,7 @@
+import json
+import urllib.request
+from io import BytesIO
+
 import psycopg2
 import requests
 from flask import Flask
@@ -7,7 +11,9 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from pydub import AudioSegment
 from pystreamapi import Stream
+from werkzeug.utils import secure_filename
 
 SCOPES = ["https://www.googleapis.com/auth/drive",
           "https://www.googleapis.com/auth/drive.file",
@@ -300,6 +306,38 @@ def speech():
         return {'status': FAIL, 'message': str(e)}
 
     return {'status': SUCCESS, 'audio_data': json_data.get('result').get('audioChunk').get('data')}
+
+
+@app.post('/api/recognize')
+def recognize():
+    if 'file' not in request.files:
+        return "No file part", 400
+    file = request.files['file']
+    if file.filename == '':
+        return "No selected file", 400
+    if file:
+        # file.mimetype = 'audio/ogg'
+        file.save(f"./{file.filename}.ogg")
+
+    with open('blob.ogg', 'rb') as f:
+        data = f.read()
+
+    url = urllib.request.Request("https://stt.api.cloud.yandex.net/speech/v1/stt:recognize", data=data)
+    url.add_header("Authorization", "Api-Key AQVNxPqsNFPShdMRlrYdwJUtKTufys1WCVxeI99W")
+
+    text = ''
+    try:
+        responseData = urllib.request.urlopen(url).read().decode('UTF-8')
+        decodedData = json.loads(responseData)
+        if decodedData.get("error_code") is None:
+            print(decodedData.get("result"))
+            text = decodedData.get("result")
+    except urllib.error.HTTPError as e:
+        print(f"HTTP error: {e.code} {e.reason}")
+        print(f"HTTP headers: {e.headers}")
+        print(f"HTTP body: {e.fp.read()}")
+
+    return {'status': SUCCESS, 'text': text}
 
 
 if __name__ == '__main__':
