@@ -1,19 +1,16 @@
 import json
+import os.path
 import urllib.request
-from io import BytesIO
 
 import psycopg2
 import requests
 from flask import Flask
 from flask import request
-import os.path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from pydub import AudioSegment
 from pystreamapi import Stream
-from werkzeug.utils import secure_filename
 
 SCOPES = ["https://www.googleapis.com/auth/drive",
           "https://www.googleapis.com/auth/drive.file",
